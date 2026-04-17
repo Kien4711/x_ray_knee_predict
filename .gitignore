@@ -1,0 +1,19 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# Training artifacts
+output/
+
+# Dataset (local, large)
+data/
+
+# IDE/system
+.vscode/
+.cursor/
+.DS_Store
+Thumbs.db
