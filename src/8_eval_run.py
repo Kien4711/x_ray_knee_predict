@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 _m = import_module
 KneeKLGrayscaleDataset = _m("src.5_dataset").KneeKLGrayscaleDataset
 knee_collate_fn = _m("src.5_dataset").knee_collate_fn
-build_resnet18_grayscale = _m("src.6_model").build_resnet18_grayscale
+build_resnet50_grayscale = _m("src.6_model").build_resnet50_grayscale
 evaluate_detailed = _m("src.7_train").evaluate_detailed
 save_eval_reports = _m("src.9_eval_report").save_eval_reports
 
@@ -58,7 +58,7 @@ def run_evaluate(
         image_size = int(ckpt["image_size"])
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = build_resnet18_grayscale(num_classes=num_classes).to(device)
+    model = build_resnet50_grayscale(num_classes=num_classes).to(device)
     model.load_state_dict(ckpt["model_state"])
 
     eval_ds = KneeKLGrayscaleDataset(recs, image_size=image_size, augment=False)

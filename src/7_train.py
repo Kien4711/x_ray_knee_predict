@@ -18,7 +18,7 @@ _m = import_module
 KneeKLGrayscaleDataset = _m("src.5_dataset").KneeKLGrayscaleDataset
 knee_collate_fn = _m("src.5_dataset").knee_collate_fn
 build_and_save_manifest = _m("src.4_manifest").build_and_save_manifest
-build_resnet18_grayscale = _m("src.6_model").build_resnet18_grayscale
+build_resnet50_grayscale = _m("src.6_model").build_resnet50_grayscale
 save_eval_reports = _m("src.9_eval_report").save_eval_reports
 
 log = logging.getLogger("knee_oa.train")
@@ -206,7 +206,7 @@ def run_training(
             collate_fn=knee_collate_fn,
         )
 
-    model = build_resnet18_grayscale(num_classes=num_classes).to(device)
+    model = build_resnet50_grayscale(num_classes=num_classes).to(device)
     train_labels = [int(r["kl"]) for r in train_recs]
     weights = _class_weights(train_labels, num_classes, device)
     criterion = nn.CrossEntropyLoss(weight=weights)
