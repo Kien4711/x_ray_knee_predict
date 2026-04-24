@@ -18,7 +18,7 @@ _m = import_module
 KneeKLGrayscaleDataset = _m("src.5_dataset").KneeKLGrayscaleDataset
 knee_collate_fn = _m("src.5_dataset").knee_collate_fn
 build_and_save_manifest = _m("src.4_manifest").build_and_save_manifest
-build_resnet50_grayscale = _m("src.6_model").build_resnet50_grayscale
+build_knee_classifier = _m("src.6_model").build_knee_classifier
 save_eval_reports = _m("src.9_eval_report").save_eval_reports
 
 log = logging.getLogger("knee_oa.train")
@@ -131,6 +131,7 @@ def run_training(
     seed: int = 42,
     image_size: int = 224,
     num_workers: int = 0,
+    model_name: str = "resnet50",
 ) -> None:
     out_dir = out_dir.resolve()
     logs_dir = out_dir / "logs"
@@ -163,7 +164,8 @@ def run_training(
     num_classes = int(manifest["num_classes"])
 
     log.info(
-        "train start: epochs=%d batch=%d lr=%g image_size=%d train_n=%d val_n=%d test_n=%d (test held out)",
+        "train start: model=%s epochs=%d batch=%d lr=%g image_size=%d train_n=%d val_n=%d test_n=%d (test held out)",
+        model_name,
         epochs,
         batch_size,
         lr,
@@ -206,7 +208,7 @@ def run_training(
             collate_fn=knee_collate_fn,
         )
 
-    model = build_resnet50_grayscale(num_classes=num_classes).to(device)
+    model = build_knee_classifier(model_name, num_classes=num_classes).to(device)
     train_labels = [int(r["kl"]) for r in train_recs]
     weights = _class_weights(train_labels, num_classes, device)
     criterion = nn.CrossEntropyLoss(weight=weights)
@@ -226,6 +228,7 @@ def run_training(
                 "test_frac": test_frac,
                 "seed": seed,
                 "image_size": image_size,
+                "model": model_name,
                 "gray_dir": str(gray_dir.resolve()),
                 "labels_dir": str(labels_dir.resolve()),
             },
@@ -263,6 +266,7 @@ def run_training(
                     "val_acc": va_acc,
                     "num_classes": num_classes,
                     "image_size": image_size,
+                    "model": model_name,
                 },
                 best_path,
             )

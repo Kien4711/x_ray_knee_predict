@@ -12,7 +12,8 @@ from torch.utils.data import DataLoader
 _m = import_module
 KneeKLGrayscaleDataset = _m("src.5_dataset").KneeKLGrayscaleDataset
 knee_collate_fn = _m("src.5_dataset").knee_collate_fn
-build_resnet50_grayscale = _m("src.6_model").build_resnet50_grayscale
+build_knee_classifier = _m("src.6_model").build_knee_classifier
+normalize_architecture = _m("src.6_model").normalize_architecture
 evaluate_detailed = _m("src.7_train").evaluate_detailed
 save_eval_reports = _m("src.9_eval_report").save_eval_reports
 
@@ -27,6 +28,7 @@ def run_evaluate(
     split: str = "test",
     batch_size: int = 16,
     num_workers: int = 0,
+    model_name: str | None = None,
 ) -> None:
     manifest_path = manifest_path.resolve()
     checkpoint_path = checkpoint_path.resolve()
@@ -56,9 +58,13 @@ def run_evaluate(
     ckpt = torch.load(checkpoint_path, map_location="cpu")
     if "image_size" in ckpt:
         image_size = int(ckpt["image_size"])
+    raw = model_name if model_name is not None else ckpt.get("model") or "resnet50"
+    if isinstance(raw, bytes):
+        raw = raw.decode("utf-8", errors="replace")
+    arch = normalize_architecture(str(raw))
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = build_resnet50_grayscale(num_classes=num_classes).to(device)
+    model = build_knee_classifier(arch, num_classes=num_classes).to(device)
     model.load_state_dict(ckpt["model_state"])
 
     eval_ds = KneeKLGrayscaleDataset(recs, image_size=image_size, augment=False)

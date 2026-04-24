@@ -14,6 +14,8 @@ write_bgr_png = _pre.write_bgr_png
 write_gray_png = _pre.write_gray_png
 run_training = _m("src.7_train").run_training
 run_evaluate = _m("src.8_eval_run").run_evaluate
+run_compare = _m("src.10_compare").run_compare
+ARCHITECTURES = _m("src.6_model").ARCHITECTURES
 
 
 def main() -> None:
@@ -52,6 +54,13 @@ def main() -> None:
     p_train.add_argument("--seed", type=int, default=42)
     p_train.add_argument("--image-size", type=int, default=224)
     p_train.add_argument("--num-workers", type=int, default=0)
+    p_train.add_argument(
+        "--model",
+        type=str,
+        default="resnet50",
+        choices=ARCHITECTURES,
+        help="Backbone: resnet50, efficientnet_b0, mobilenet_v2",
+    )
 
     p_ev = sub.add_parser("evaluate", help="Evaluate checkpoint on manifest val or test split")
     p_ev.add_argument("--manifest", type=Path, required=True)
@@ -66,6 +75,35 @@ def main() -> None:
     p_ev.add_argument("--out", type=Path, default=Path("output/eval_out"))
     p_ev.add_argument("--batch-size", type=int, default=16)
     p_ev.add_argument("--num-workers", type=int, default=0)
+    p_ev.add_argument(
+        "--model",
+        type=str,
+        default=None,
+        metavar="ARCH",
+        help=f"Optional backbone override ({', '.join(ARCHITECTURES)}); default: from checkpoint",
+    )
+
+    p_cmp = sub.add_parser(
+        "compare",
+        help="Compare >=2 trained runs on the same split (metrics + charts); manifests must match",
+    )
+    p_cmp.add_argument(
+        "--runs",
+        type=Path,
+        nargs="+",
+        required=True,
+        help="Training output dirs (each with manifest.json, best_model.pt, history.csv)",
+    )
+    p_cmp.add_argument("--out", type=Path, default=Path("output/compare_latest"))
+    p_cmp.add_argument(
+        "--split",
+        type=str,
+        default="test",
+        choices=("test", "val"),
+        help="Which manifest split to score (default: test)",
+    )
+    p_cmp.add_argument("--batch-size", type=int, default=16)
+    p_cmp.add_argument("--num-workers", type=int, default=0)
 
     args = parser.parse_args()
 
@@ -119,11 +157,14 @@ def main() -> None:
             seed=args.seed,
             image_size=args.image_size,
             num_workers=args.num_workers,
+            model_name=args.model,
         )
         logging.getLogger("knee_oa.main").info("run output: %s (see logs/train.log)", out)
         return
 
     if args.command == "evaluate":
+        if args.model is not None and args.model not in ARCHITECTURES:
+            parser.error(f"--model must be one of: {', '.join(ARCHITECTURES)}")
         out = args.out.resolve()
         log_dir = out / "logs"
         configure_knee_oa_logging(log_dir / "evaluate.log")
@@ -134,8 +175,23 @@ def main() -> None:
             split=args.split,
             batch_size=args.batch_size,
             num_workers=args.num_workers,
+            model_name=args.model,
         )
         logging.getLogger("knee_oa.main").info("eval output: %s", out)
+        return
+
+    if args.command == "compare":
+        out = args.out.resolve()
+        log_dir = out / "logs"
+        configure_knee_oa_logging(log_dir / "compare.log")
+        run_compare(
+            [p.resolve() for p in args.runs],
+            out,
+            split=args.split,
+            batch_size=args.batch_size,
+            num_workers=args.num_workers,
+        )
+        logging.getLogger("knee_oa.main").info("compare output: %s", out)
         return
 
 
